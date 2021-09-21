@@ -53,7 +53,7 @@ public class Drivetrain {
             leftRear = hwMap.get(DcMotor.class, "Left_rear");
             rightRear = hwMap.get(DcMotor.class, "Right_rear");
 
-        
+
            leftFront.setDirection(DcMotor.Direction.REVERSE);
            rightFront.setDirection(DcMotor.Direction.REVERSE);
            rightRear.setDirection(DcMotor.Direction.REVERSE);
