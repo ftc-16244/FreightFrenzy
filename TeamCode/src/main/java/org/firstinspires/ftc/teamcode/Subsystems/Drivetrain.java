@@ -1,95 +1,151 @@
 package org.firstinspires.ftc.teamcode.Subsystems;
 
-
-import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.util.ElapsedTime;
-/**
- * This is the Drivetrain subsystem for the Trailblazers 2020-2021 Freight Frenzy robot.
- * It is a v4 goBilda strafer mecanum chassis with 312 RPM Yellow Jacket motors.
- * Motor naming convention starts at the front left and goes clockwise. The front left is plugged
- * into port #0 on the Control hub.
- */
-public class Drivetrain {
-        // Define hardware objects
-        public DcMotor leftFront = null;
-        public DcMotor rightFront = null;
-        public DcMotor leftRear = null;
-        public DcMotor rightRear = null;
-        public BNO055IMU imu = null;
+import com.qualcomm.robotcore.hardware.Servo;
 
-        // List constants
-        public static final double COUNTS_PER_DRIVE_MOTOR_REV = 537.7; // Gobilda 312 RPM
-        public static final double DRIVE_REDUCTION = 100/1.0; // speed up - motor 24T wheel 16T
-        public static final double WHEEL_DIAMETER_INCHES = 96.0/25.4;      //Nexus 60mm wheels
-        public static final double COUNTS_PER_INCH = (COUNTS_PER_DRIVE_MOTOR_REV *DRIVE_REDUCTION) /
-                (WHEEL_DIAMETER_INCHES * 3.1415);
-        public static final double DRIVE_SPEED = .8;
-        private static final double TURN_SPEED = 0.5;
-        private boolean inTeleOp;
-        private ElapsedTime runtime = new ElapsedTime();
+import static java.lang.Thread.sleep;
+
+public class Lift {
+    //Define Hardware Objects
+    public DcMotor  Lift          =   null;
+    public Servo    Wrist         =   null;
+    public Servo    Pivot         =   null;
 
 
-        // Contructor for Drivetrain
-        // Passing boolean to automatically config encoders for auto or teleop.
-        public Drivetrain() {
+    //Constants Lift
 
-        }
+    private static final double     LIFTSPEED       =   0.78;
 
-        // initialize drivetrain components, assign names for driver station config, set directions
-        // and encoders if needed.
-        public void init(HardwareMap hwMap, boolean inTeleOp) {
+    private static final double     LIFTUP          =   14.8; //Number is in inches 13 is too low
+    private static final double     LIFTDOWN        =   0; //To make sure it goes all the way down
+    private static final int        LIFTPARTIAL        = 8;
 
-            // initialize the imu first.
-            // Note this in NOT IMU calibration.
-            imu = hwMap.get(BNO055IMU.class, "imu");
+    private static final double     TICKS_PER_LIFT_IN = 100; // determined experimentally
+    private static final int        LIFT_HEIGHT_HIGH = (int) (LIFTUP * TICKS_PER_LIFT_IN); // converts to ticks
+    private static final int        LIFT_HEIGHT_LOW = (int) (LIFTDOWN * TICKS_PER_LIFT_IN); // converts to ticks
+    private static final int        LIFT_HEIGHT_PARTIAL = (int) (LIFTPARTIAL * TICKS_PER_LIFT_IN); // converts to ticks
+    //Constants Wrist
+    private static final double     WRISTINIT         =   0.4;// 0.35 for V3
+    private static final double     WRISTOPEN         =   0.78;//0.3 for V3
+    private static final double     WRISTSUPEROPEN    =   0.01;//0.01 for V3
+    private static final double     WRISTCLOSE        =   0.22;// 0.8 for V3
+    private static final double     WRISTPARTOPEN     =   0.55;// 0.8 for V3
 
+    //Constants Pivot
+    public static final double      PIVOTSTART          =   .33 ;
+    public static final double      PIVOTUP             =   0.40 ;
+    public static final double      PIVOTDOWN           =   0.65;
+    public static final double      PIVOTHALFWAY        =   0.50;
 
-            // initialize al the drive motors
-            leftFront = hwMap.get(DcMotor.class, "Left_front");
-            rightFront = hwMap.get(DcMotor.class, "Right_front");
-            leftRear = hwMap.get(DcMotor.class, "Left_rear");
-            rightRear = hwMap.get(DcMotor.class, "Right_rear");
+    public void init(HardwareMap hwMap)  {
+        Lift=hwMap.get(DcMotor.class,"Lift");
+        Wrist=hwMap.get(Servo.class,"Wrist");
+        Pivot=hwMap.get(Servo.class,"Pivot");
 
+        //Positive=up and Negative=down
+        Lift.setDirection(DcMotor.Direction.FORWARD);
+        Lift.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-           leftFront.setDirection(DcMotor.Direction.REVERSE);
-           rightFront.setDirection(DcMotor.Direction.REVERSE);
-           rightRear.setDirection(DcMotor.Direction.REVERSE);
-           leftRear.setDirection(DcMotor.Direction.REVERSE);
+        Lift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        Wrist.setPosition(WRISTINIT);
+        Pivot.setPosition(PIVOTSTART);
 
+    }
 
+    //// Single operation methods - see below for methods to be called in Opmodes
+    public void LiftRise() {
+        Lift.setTargetPosition(LIFT_HEIGHT_HIGH);// value is in ticks from above calculation
+        Lift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        Lift.setPower(LIFTSPEED);
+    }
+    public void LiftLower() {
+        Lift.setTargetPosition(LIFT_HEIGHT_LOW); // this one is just zero for now
+        Lift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        Lift.setPower(LIFTSPEED);
+    }
+    public void LiftMiddle() {
+        Lift.setTargetPosition(LIFTPARTIAL);
+        Lift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        Lift.setPower(LIFTSPEED);
+    }
 
-            leftFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-            rightFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-            leftRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-            rightRear.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+    public void LiftIdle() {
+        Lift.setPower(0);
+    }
 
-            // not in teleop means autonomous so encoders are needed
-            // IMU us also needed
-            if (!inTeleOp) {
-
-                leftFront.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-                rightFront.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-                leftFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-                rightFront.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-
-
-            } else {
-                // for InTeleop we don't need encoders because driver controls
-                leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-                rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-                leftRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-                rightRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-
-
-            }
-
-        }
+    public double getLiftHeight() {
+        double liftHeight;
+        Lift.getCurrentPosition();
+        liftHeight =  Lift.getCurrentPosition() *  TICKS_PER_LIFT_IN;
+        return  liftHeight;
+    }
 
 
 
+    public void WristOpen()  {
+
+        Wrist.setPosition(WRISTOPEN);
+    }
+
+    public void WristPartOpen() {
+        Wrist.setPosition(WRISTPARTOPEN);
+    }
+
+    public void WRISTSuperOpen()  {
+
+        Wrist.setPosition(WRISTSUPEROPEN);
+    }
+    public void WristClose() {
+
+        Wrist.setPosition(WRISTCLOSE);
+    }
+
+
+
+    public void PivotDown()  {
+
+        Pivot.setPosition(PIVOTDOWN);
+    }
+
+    public void PivotUp() {
+
+        Pivot.setPosition(PIVOTUP);
+    }
+    public void PivotStart() {
+
+        Pivot.setPosition(PIVOTSTART);
+
+    }
+
+    public void PivotHalfWay() {
+
+        Pivot.setPosition(PIVOTHALFWAY);
+    }
+
+    ///// Multi Function methods to be called by the Opmodes
+
+    public void resetWobble() {
+        WristClose();
+        LiftLower();
+    }
+
+    public void readyToGrabWobble() {
+        //LiftRise();
+        //ArmExtend();
+        WristOpen();
+        LiftLower();
+    }
+
+    public void grabAndLift() {
+        WristClose();
+        //LiftRise();
+    }
+
+    public void lowerAndRelease() {
+        LiftLower();
+        WristOpen();
+    }
 }
-
 
